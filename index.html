@@ -1,0 +1,767 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI助手
+  </title> 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 引入Marked.js用于Markdown渲染 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- 引入Prism.js用于代码高亮 -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  
+  <!-- 配置Tailwind自定义颜色和字体 -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4F46E5', // 主色调：深紫色
+            secondary: '#ECFDF5', // 辅助色：淡绿色
+            neutral: '#1F2937', // 中性色：深灰色
+            surface: '#0B1020'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['Fira Code', 'monospace'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .no-horizontal-pan {
+        touch-action: pan-y;
+        overscroll-behavior-x: none;
+      }
+      .scrollbar-hide {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .message-appear {
+        animation: fadeIn 0.3s ease-out forwards;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .typing-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .typing-indicator span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #6B7280;
+        animation: typing 1.4s infinite ease-in-out both;
+      }
+      .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+      .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+      @keyframes typing {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+      }
+
+      /* 玻璃拟态卡片 */
+      .glass {
+        background: rgba(255, 255, 255, 0.7);
+        box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .dark .glass {
+        background: rgba(17, 24, 39, 0.5);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+      }
+    }
+  </style>
+  
+  <!-- Markdown样式 -->
+  <style>
+    .markdown-content h1 {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 1rem 0 0.5rem 0;
+    }
+    .markdown-content h2 {
+      font-size: 1.25rem;
+      font-weight: bold;
+      margin: 0.75rem 0 0.5rem 0;
+    }
+    .markdown-content h3 {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin: 0.75rem 0 0.5rem 0;
+    }
+    .markdown-content p {
+      margin-bottom: 0.75rem;
+      line-height: 1.6;
+    }
+    .markdown-content ul, .markdown-content ol {
+      margin: 0.75rem 0 0.75rem 1.5rem;
+    }
+    .markdown-content ul {
+      list-style-type: disc;
+    }
+    .markdown-content ol {
+      list-style-type: decimal;
+    }
+    .markdown-content li {
+      margin-bottom: 0.25rem;
+    }
+    .markdown-content a {
+      color: #4F46E5;
+      text-decoration: underline;
+    }
+    .markdown-content blockquote {
+      border-left: 4px solid #e5e7eb;
+      padding-left: 0.75rem;
+      margin: 0.75rem 0;
+      color: #6b7280;
+    }
+    .markdown-content code {
+      background-color: #f3f4f6;
+      padding: 0.125rem 0.25rem;
+      border-radius: 0.25rem;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+    }
+    .markdown-content pre {
+      background-color: #1f2937;
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+    .markdown-content pre code {
+      background-color: transparent;
+      padding: 0;
+      color: inherit;
+    }
+    .markdown-content table {
+      border-collapse: collapse;
+      margin: 1rem 0;
+      width: 100%;
+    }
+    .markdown-content th, .markdown-content td {
+      border: 1px solid #e5e7eb;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    .markdown-content th {
+      background-color: #f3f4f6;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-black font-sans text-neutral dark:text-gray-200 min-h-screen flex flex-col relative overflow-x-hidden no-horizontal-pan">
+  <!-- 渐变背景装饰 -->
+  <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+    <div class="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-primary/20 blur-3xl"></div>
+    <div class="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-indigo-400/20 blur-3xl"></div>
+  </div>
+  <!-- 头部导航 -->
+  <header class="sticky top-0 z-30 border-b border-gray-200/70 dark:border-white/10">
+    <div class="glass">
+      <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+          <img src="https://love.mytx.fun/826955079910297600.png" alt="Logo" class="w-10 h-10 rounded-lg shadow-sm object-cover">
+          <h1 class="text-xl font-semibold text-neutral dark:text-white">AI聊天</h1>
+          <span class="text-xs bg-green-100 text-green-800 dark:bg-emerald-900/40 dark:text-emerald-200 px-2 py-0.5 rounded-full">Gemini</span>
+      </div>
+      <div class="flex items-center space-x-4">
+          <button id="theme-toggle" class="text-gray-500 hover:text-primary dark:text-gray-300 transition-colors" title="主题">
+            <i class="fa fa-moon-o hidden dark:inline"></i>
+            <i class="fa fa-sun-o dark:hidden"></i>
+          </button>
+          <button id="settings-open" class="text-gray-500 hover:text-primary dark:text-gray-300 transition-colors" title="设置">
+            <i class="fa fa-cog"></i>
+          </button>
+
+      </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要内容区域 -->
+  <main class="flex-1 container mx-auto px-4 py-6 flex flex-col max-w-4xl">
+    <!-- 聊天历史区域 -->
+    <div id="chat-history" class="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide mb-6 space-y-6 pb-4">
+      <!-- 欢迎消息 -->
+      <div class="flex items-start space-x-3 message-appear">
+        <img src="https://love.mytx.fun/825123049627062272.jpg" alt="AI" class="w-8 h-8 rounded-full mt-1 shadow ring-2 ring-white/70 dark:ring-white/10 object-cover">
+        <div class="bg-white dark:bg-white/5 dark:border-white/10 border border-gray-100 rounded-2xl rounded-tl-none p-4 shadow-sm max-w-[85%]">
+          <div class="markdown-content">
+            <p>你好！我是基于Gemini模型的AI助手我可以：</p>
+            <ul>
+              <li>显示<strong>粗体</strong>和<em>斜体</em>文本</li>
+              <li>创建有序和无序列表</li>
+              <li>展示代码块并高亮语法：
+<pre><code class="language-javascript">function greeting() {
+  console.log("Hello, world!");
+}</code></pre>
+              </li>
+              <li>添加引用块</li>
+              <li>以及其他Markdown格式</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="glass rounded-2xl border border-white/60 dark:border-white/10 p-3 mb-6">
+      <form id="chat-form" class="flex items-end gap-2">
+        <div class="flex items-center gap-2">
+          <button type="button" class="text-gray-500 hover:text-primary dark:text-gray-300 transition-colors" title="上传">
+          </button>
+        </div>
+        <textarea 
+          id="message-input" 
+          class="flex-1 border border-transparent focus:border-primary/30 focus:ring-2 focus:ring-primary/20 bg-white/80 dark:bg-white/5 dark:text-gray-100 rounded-xl p-3 resize-none max-h-40 placeholder-gray-400 dark:placeholder-gray-500 transition-all"
+          placeholder="输入你的消息...."
+          rows="1"
+        ></textarea>
+        <button 
+          type="submit" 
+          class="bg-primary hover:bg-primary/90 text-white p-3 rounded-full transition-all transform hover:scale-105 active:scale-95 shadow"
+          id="send-button"
+        >
+          <i class="fa fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- 状态提示 -->
+    <div id="status-indicator" class="text-center text-gray-500 dark:text-gray-400 text-sm hidden">
+      <div class="typing-indicator inline-block">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <p class="mt-2">AI正在思考中...</p>
+    </div>
+
+    <!-- Token使用信息 -->
+    <div id="token-info" class="text-center text-gray-400 dark:text-gray-500 text-xs mb-4 hidden">
+      <p>使用 tokens: <span id="prompt-tokens">0</span> (输入) + <span id="candidates-tokens">0</span> (输出) = <span id="total-tokens">0</span> (总计)</p>
+    </div>
+  </main>
+
+  <!-- 设置弹窗 -->
+  <div id="settings-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"></div>
+    <div class="absolute inset-0 flex items-center justify-center px-4">
+      <div class="w-full max-w-md bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-neutral-800 dark:text-white">头像设置</h3>
+          <button id="settings-close" class="text-gray-500 hover:text-primary dark:text-gray-300">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+          <div>
+            <label for="user-avatar-input" class="block text-sm text-gray-600 dark:text-gray-300 mb-1">我的头像 URL</label>
+            <div class="flex items-center gap-2">
+              <input id="user-avatar-input" type="url" placeholder="例如：https://example.com/me.png 或选择文件" class="flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30">
+              <label class="px-3 py-2 text-sm rounded-md bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20">
+                <input id="user-avatar-file" type="file" accept="image/*" class="hidden">
+                上传
+              </label>
+              <img id="user-avatar-preview" alt="预览" class="w-8 h-8 rounded-full object-cover ring-1 ring-black/5 dark:ring-white/10 hidden">
+            </div>
+            <p class="mt-1 text-xs text-gray-400">支持直接粘贴 URL 或上传图片（将以本地 Data URL 方式保存）</p>
+          </div>
+          <div>
+            <label for="ai-avatar-input" class="block text-sm text-gray-600 dark:text-gray-300 mb-1">AI 头像 URL</label>
+            <div class="flex items-center gap-2">
+              <input id="ai-avatar-input" type="url" placeholder="例如：https://example.com/api.png 或选择文件" class="flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30">
+              <label class="px-3 py-2 text-sm rounded-md bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20">
+                <input id="ai-avatar-file" type="file" accept="image/*" class="hidden">
+                上传
+              </label>
+              <img id="ai-avatar-preview" alt="预览" class="w-8 h-8 rounded-full object-cover ring-1 ring-black/5 dark:ring-white/10 hidden">
+            </div>
+            <p class="mt-1 text-xs text-gray-400">支持 URL 与上传，未设置将使用默认 AI 头像</p>
+          </div>
+        </div>
+        <div class="px-5 py-4 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-2">
+          <button id="settings-cancel" class="px-3 py-2 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10">取消</button>
+          <button id="settings-save" class="px-4 py-2 text-sm rounded-md bg-primary text-white hover:bg-primary/90">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 页脚 -->
+  <footer class="glass border-t border-white/60 dark:border-white/10 py-3">
+    <div class="container mx-auto px-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+      <p>© 2025 AI聊天助手 | 版本号V1.0.0 | 基于Gemini模型</p>
+    </div>
+  </footer>
+
+  <script>
+    // 获取DOM元素
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+    const chatHistory = document.getElementById('chat-history');
+    const statusIndicator = document.getElementById('status-indicator');
+    const sendButton = document.getElementById('send-button');
+    const tokenInfo = document.getElementById('token-info');
+    const promptTokensEl = document.getElementById('prompt-tokens');
+    const candidatesTokensEl = document.getElementById('candidates-tokens');
+    const totalTokensEl = document.getElementById('total-tokens');
+    const themeToggle = document.getElementById('theme-toggle');
+    const settingsOpen = document.getElementById('settings-open');
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsClose = document.getElementById('settings-close');
+    const settingsCancel = document.getElementById('settings-cancel');
+    const settingsSave = document.getElementById('settings-save');
+    const userAvatarInput = document.getElementById('user-avatar-input');
+    const aiAvatarInput = document.getElementById('ai-avatar-input');
+    const userAvatarFile = document.getElementById('user-avatar-file');
+    const aiAvatarFile = document.getElementById('ai-avatar-file');
+    const userAvatarPreview = document.getElementById('user-avatar-preview');
+    const aiAvatarPreview = document.getElementById('ai-avatar-preview');
+
+    // 主题初始化与切换
+    (function initTheme() {
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if ((saved === 'dark') || (!saved && prefersDark)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+
+    themeToggle?.addEventListener('click', () => {
+      const root = document.documentElement;
+      const isDark = root.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+
+    // 禁止页面缩放（阻止 Ctrl/Cmd + 滚轮/快捷键 以及触控手势）
+    document.addEventListener('wheel', function(e) {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    document.addEventListener('keydown', function(e) {
+      const isCtrlLike = e.ctrlKey || e.metaKey;
+      const zoomKeys = ['+', '-', '=', '0'];
+      if (isCtrlLike && zoomKeys.includes(e.key)) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
+      document.addEventListener(evt, function(e) {
+        e.preventDefault();
+      });
+    });
+
+    // 头像获取与设置
+    function getAiAvatar() {
+      return localStorage.getItem('aiAvatarUrl') || 'https://love.mytx.fun/825123049627062272.jpg';
+    }
+    function getUserAvatar() {
+      return localStorage.getItem('userAvatarUrl') || '';
+    }
+    function applyAiAvatarToWelcome() {
+      const welcomeAiImg = document.querySelector('#chat-history img[alt="AI"]');
+      if (welcomeAiImg) {
+        welcomeAiImg.src = getAiAvatar();
+      }
+    }
+    function updatePreview(imgEl, url) {
+      if (!imgEl) return;
+      if (url) {
+        imgEl.src = url;
+        imgEl.classList.remove('hidden');
+      } else {
+        imgEl.src = '';
+        imgEl.classList.add('hidden');
+      }
+    }
+
+    // 设置弹窗逻辑
+    function openSettings() {
+      userAvatarInput.value = getUserAvatar();
+      aiAvatarInput.value = localStorage.getItem('aiAvatarUrl') || '';
+      updatePreview(userAvatarPreview, userAvatarInput.value);
+      updatePreview(aiAvatarPreview, aiAvatarInput.value || getAiAvatar());
+      settingsModal.classList.remove('hidden');
+    }
+    function closeSettings() {
+      settingsModal.classList.add('hidden');
+    }
+    settingsOpen?.addEventListener('click', openSettings);
+    settingsClose?.addEventListener('click', closeSettings);
+    settingsCancel?.addEventListener('click', closeSettings);
+    settingsModal?.addEventListener('click', (e) => {
+      if (e.target === settingsModal) closeSettings();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!settingsModal.classList.contains('hidden') && e.key === 'Escape') closeSettings();
+    });
+    settingsSave?.addEventListener('click', () => {
+      const userUrl = (userAvatarInput.value || '').trim();
+      const aiUrl = (aiAvatarInput.value || '').trim();
+      if (userUrl) {
+        localStorage.setItem('userAvatarUrl', userUrl);
+      } else {
+        localStorage.removeItem('userAvatarUrl');
+      }
+      if (aiUrl) {
+        localStorage.setItem('aiAvatarUrl', aiUrl);
+      } else {
+        localStorage.removeItem('aiAvatarUrl');
+      }
+      applyAiAvatarToWelcome();
+      closeSettings();
+    });
+
+    // 处理文件上传 -> 读为 Data URL 存入输入框与预览
+    function handleImageFile(file, targetInput, previewImg) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        targetInput.value = dataUrl;
+        updatePreview(previewImg, dataUrl);
+      };
+      reader.readAsDataURL(file);
+    }
+    userAvatarFile?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      handleImageFile(file, userAvatarInput, userAvatarPreview);
+    });
+    aiAvatarFile?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      handleImageFile(file, aiAvatarInput, aiAvatarPreview);
+    });
+
+    // 自动调整文本框高度
+    messageInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight < 120 ? this.scrollHeight : 120) + 'px';
+    });
+
+    // 简单延时
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // 带429重试的请求
+    async function callApiWithRetry(message, attempt = 1) {
+      const maxAttempts = 3;
+      const response = await fetch('https://api.mytx.fun/proxy', {
+        method: 'POST',
+        headers: {
+          'accept': '*/*',
+          'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+          'content-type': 'application/json',
+          'origin': 'https://api.mytx.fun',
+          'referer': 'https://api.mytx.fun/',
+          'sec-ch-ua': '"Chromium";v="142", "Microsoft Edge";v="142", "Not_A Brand";v="99"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-origin',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0',
+          'cookie': 'UM_distinctid=19a482de88d13f-0b90d19d5a4d74-26011951-249d2a-19a482de88ef87; CNZZDATA1281334347=393624048-1762147560-%7C1762147590'
+        },
+        body: JSON.stringify({
+          "contents": [
+            {
+              "parts": [
+                {
+                  "text": message
+                }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (response.status === 429) {
+        if (attempt < maxAttempts) {
+          await delay(2000);
+          return await callApiWithRetry(message, attempt + 1);
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(`API请求失败: ${response.status}`);
+      }
+
+      return await response.json();
+    }
+
+    // 在聊天区域添加“正在输入”的占位消息
+    function addTypingPlaceholder() {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex items-start space-x-3 message-appear';
+      wrapper.innerHTML = `
+        <img src="${getAiAvatar()}" alt="AI" class="w-8 h-8 rounded-full mt-1 shadow ring-2 ring-white/70 dark:ring-white/10 object-cover">
+        <div class="relative bg-white dark:bg-white/5 dark:text-gray-100 border border-gray-100 dark:border-white/10 rounded-2xl rounded-tl-none p-4 shadow-sm max-w-[85%]">
+          <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <div class="typing-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <span>正在思考...</span>
+          </div>
+        </div>
+      `;
+      chatHistory.appendChild(wrapper);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+      // 返回内容容器，后续直接替换其HTML
+      const contentEl = wrapper.querySelector('div.rounded-2xl > div');
+      return { wrapper, contentEl };
+    }
+
+    // 提交表单处理
+    chatForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const message = messageInput.value.trim();
+      if (!message) return;
+      
+      // 添加用户消息到聊天历史（用户消息也进行Markdown渲染）
+      addMessageToHistory(message, 'user');
+      
+      // 清空输入框并重置高度
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      
+      // 在消息区显示AI正在输入的占位
+      const placeholder = addTypingPlaceholder();
+
+      // 禁用发送按钮
+      sendButton.disabled = true;
+      sendButton.classList.add('opacity-70', 'cursor-not-allowed');
+      
+      try {
+        // 调用API（429时静默等待2s并重试）
+        const data = await callApiWithRetry(message);
+        console.log('API响应:', data);
+        
+        // 解析API响应（根据提供的响应格式）
+        let aiReply = "抱歉，未获取到有效回复。";
+        if (data.candidates && data.candidates.length > 0 && 
+            data.candidates[0].content && 
+            data.candidates[0].content.parts && 
+            data.candidates[0].content.parts.length > 0) {
+          aiReply = data.candidates[0].content.parts[0].text;
+        }
+        
+        // 显示token使用信息
+        if (data.usageMetadata) {
+          promptTokensEl.textContent = data.usageMetadata.promptTokenCount || 0;
+          candidatesTokensEl.textContent = data.usageMetadata.candidatesTokenCount || 0;
+          totalTokensEl.textContent = data.usageMetadata.totalTokenCount || 0;
+          tokenInfo.classList.remove('hidden');
+        }
+        
+        // 将占位替换为AI真实回复
+        const htmlContent = marked.parse(aiReply);
+        const bubble = placeholder.contentEl.parentElement;
+        bubble.classList.add('relative');
+        bubble.dataset.raw = aiReply;
+        placeholder.contentEl.className = 'markdown-content';
+        placeholder.contentEl.innerHTML = htmlContent;
+        // 代码高亮
+        const codeBlocks = placeholder.contentEl.querySelectorAll('pre code');
+        codeBlocks.forEach(block => Prism.highlightElement(block));
+        // 添加复制按钮（整条消息与代码块）
+        addCopyButtonsForMessage(bubble);
+        
+      } catch (error) {
+        console.error('请求错误:', error);
+        // 将占位替换为错误提示（不弹出全局提示）
+        placeholder.contentEl.innerHTML = `<div class="text-red-600 dark:text-red-400 text-sm">抱歉，出现了错误: ${error.message}</div>`;
+      } finally {
+        // 启用发送按钮
+        sendButton.disabled = false;
+        sendButton.classList.remove('opacity-70', 'cursor-not-allowed');
+      }
+    });
+
+    // 添加消息到聊天历史，使用Marked.js渲染Markdown
+    function addMessageToHistory(text, sender) {
+      // 使用marked.js将Markdown转换为HTML
+      const htmlContent = marked.parse(text);
+      
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'flex items-start space-x-3 message-appear';
+      
+      if (sender === 'user') {
+        messageDiv.classList.add('justify-end');
+        const userAvatarUrl = getUserAvatar();
+        const userAvatarHtml = userAvatarUrl
+          ? `<img src="${userAvatarUrl}" alt="Me" class="w-8 h-8 rounded-full mt-1 shadow ring-2 ring-white/70 dark:ring-white/10 object-cover">`
+          : `<div class="bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-100 p-2 rounded-full mt-1 ring-2 ring-white/70 dark:ring-white/10"><i class="fa fa-user"></i></div>`;
+        messageDiv.innerHTML = `
+          <div class="bg-primary/10 dark:bg-indigo-500/10 text-neutral dark:text-gray-100 border border-indigo-500/10 dark:border-white/10 rounded-2xl rounded-tr-none p-4 shadow-sm max-w-[85%]">
+            <div class="markdown-content">${htmlContent}</div>
+          </div>
+          ${userAvatarHtml}
+        `;
+      } else {
+        messageDiv.innerHTML = `
+          <img src="${getAiAvatar()}" alt="AI" class="w-8 h-8 rounded-full mt-1 shadow ring-2 ring-white/70 dark:ring-white/10 object-cover">
+          <div class="bg-white dark:bg-white/5 dark:text-gray-100 border border-gray-100 dark:border-white/10 rounded-2xl rounded-tl-none p-4 shadow-sm max-w-[85%]">
+            <div class="markdown-content">${htmlContent}</div>
+          </div>
+        `;
+      }
+      
+      chatHistory.appendChild(messageDiv);
+      
+      // 对代码块应用语法高亮
+      const codeBlocks = messageDiv.querySelectorAll('pre code');
+      codeBlocks.forEach(block => {
+        Prism.highlightElement(block);
+      });
+      
+      // 为整条消息与代码块添加复制按钮
+      const bubble = messageDiv.querySelector('div.rounded-2xl');
+      if (bubble) {
+        bubble.classList.add('relative');
+        bubble.dataset.raw = text;
+        addCopyButtonsForMessage(bubble);
+      }
+
+      // 滚动到底部
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // 复制到剪贴板（带回退）
+    async function copyTextToClipboard(text) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    // 给消息卡片与内部代码块添加复制按钮（消息按钮在底部，不遮挡内容）
+    function addCopyButtonsForMessage(bubbleEl) {
+      // 移除顶部绝对定位旧按钮（兼容历史）
+      const old = bubbleEl.querySelector('.btn-copy-message.absolute');
+      if (old) old.remove();
+
+      // 底部工具栏
+      let footer = bubbleEl.querySelector('.msg-footer');
+      if (!footer) {
+        footer = document.createElement('div');
+        footer.className = 'msg-footer mt-3 pt-2 border-t border-gray-100 dark:border-white/10 text-right';
+        bubbleEl.appendChild(footer);
+      }
+
+      // 整条消息复制按钮（底部右侧）
+      if (!footer.querySelector('.btn-copy-message')) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-copy-message inline-flex items-center gap-1 text-xs text-gray-500 hover:text-primary dark:text-gray-400 px-2 py-1 rounded-md transition';
+        btn.innerHTML = '<i class="fa fa-copy"></i> 复制';
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const raw = bubbleEl.dataset.raw || bubbleEl.innerText || '';
+          const ok = await copyTextToClipboard(raw);
+          if (ok) {
+            const prev = btn.innerHTML;
+            btn.innerHTML = '<i class="fa fa-check"></i> 已复制';
+            setTimeout(() => (btn.innerHTML = prev), 1200);
+          }
+        });
+        footer.appendChild(btn);
+      }
+
+      // 移除重发功能（按需保留占位，确保不生成任何重发元素）
+
+      // 每个代码块添加复制按钮
+      const pres = bubbleEl.querySelectorAll('pre');
+      pres.forEach((pre) => {
+        if (pre.querySelector('.btn-copy-code')) return;
+        pre.classList.add('relative');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-copy-code absolute top-2 right-2 text-xs text-gray-200 hover:text-white bg-black/30 px-2 py-1 rounded-md transition';
+        btn.innerHTML = '<i class="fa fa-copy"></i>';
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const codeEl = pre.querySelector('code');
+          const text = codeEl ? codeEl.innerText : pre.innerText;
+          const ok = await copyTextToClipboard(text);
+          if (ok) {
+            const prev = btn.innerHTML;
+            btn.innerHTML = '<i class="fa fa-check"></i>';
+            setTimeout(() => (btn.innerHTML = prev), 1000);
+          }
+        });
+        pre.appendChild(btn);
+      });
+    }
+
+    // 首屏欢迎消息也补充复制按钮
+    window.addEventListener('DOMContentLoaded', () => {
+      const firstBubble = document.querySelector('#chat-history .rounded-2xl');
+      if (firstBubble) {
+        if (!firstBubble.dataset.raw) {
+          const mc = firstBubble.querySelector('.markdown-content');
+          firstBubble.dataset.raw = mc ? mc.innerText : firstBubble.innerText;
+        }
+        firstBubble.classList.add('relative');
+        addCopyButtonsForMessage(firstBubble);
+      }
+    });
+
+    // 支持按Enter发送消息，Shift+Enter换行
+    messageInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        chatForm.dispatchEvent(new Event('submit'));
+      }
+    });
+  </script>
+</body>
+</html>
