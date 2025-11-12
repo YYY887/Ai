@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -477,14 +477,14 @@
     // 带429重试的请求
     async function callApiWithRetry(message, attempt = 1) {
       const maxAttempts = 3;
-      const response = await fetch('https://api.mytx.fun/proxy', {
+      const response = await fetch('https://api.qmys.fun/proxy', {
         method: 'POST',
         headers: {
           'accept': '*/*',
           'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
           'content-type': 'application/json',
-          'origin': 'https://api.mytx.fun',
-          'referer': 'https://api.mytx.fun/',
+          'origin': 'https://api.qmys.fun',
+          'referer': 'https://api.qmys.fun/',
           'sec-ch-ua': '"Chromium";v="142", "Microsoft Edge";v="142", "Not_A Brand";v="99"',
           'sec-ch-ua-mobile': '?0',
           'sec-ch-ua-platform': '"Windows"',
